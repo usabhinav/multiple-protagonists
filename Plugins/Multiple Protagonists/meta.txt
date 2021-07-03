@@ -1,5 +1,5 @@
 Name		= Multiple Protagonists
-Version		= 4.0.1
+Version		= 4.0.2
 Link		= https://reliccastle.com/resources/280/
 Credits		= NettoHikari
 Requires	= v19.1 Hotfixes

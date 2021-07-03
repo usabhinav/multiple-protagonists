@@ -1,8 +1,8 @@
 ################################################################################
-# Multiple Protagonists v4.0.1
+# Multiple Protagonists v4.0.2
 # by NettoHikari
 # 
-# June 30, 2021
+# July 2, 2021
 # 
 # This script allows the player to have up to 8 main characters, each with their
 # own Pokemon parties, PC and Item storages, Trainer data, etc. It is intended
@@ -492,7 +492,7 @@ def pbSwitchCharacter(id, name = nil, outfit = 0)
   oldid = $Trainer.character_ID
   $PokemonGlobal.mainCharacters[oldid] = pbCharacterInfoArray
   if meta.nil? # Set up trainer for the first time
-    $Trainer = Player.new("Unnamed", GameData::TrainerType.get(id).id)
+    $Trainer = Player.new("Unnamed", GameData::Metadata.get_player(id)[0])
     $Trainer.character_ID = id
     pbTrainerName(name, outfit)
     $Trainer.id = pbGetForeignCharacterID
