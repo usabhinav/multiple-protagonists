@@ -1,14 +1,14 @@
 ################################################################################
-# Multiple Protagonists v4.0.2
+# Multiple Protagonists v4.1.0
 # by NettoHikari
 # 
-# July 2, 2021
+# June 17, 2022
 # 
-# This script allows the player to have up to 8 main characters, each with their
-# own Pokemon parties, PC and Item storages, Trainer data, etc. It is intended
-# for use in games where the story is split between at least two playable
-# protagonists (e.g. half the story from the main character's perspective,
-# the other half from the perspective of the rival).
+# This script allows the player to have up to multiple main characters, each
+# with their own Pokemon parties, PC and Item storages, Trainer data, etc. It is
+# intended for use in games where the story is split between at least two
+# playable protagonists (e.g. half the story from the main character's
+# perspective, the other half from the perspective of the rival).
 # 
 # Credits MUST BE GIVEN to NettoHikari
 # You should also credit the authors of Pokemon Essentials itself.
@@ -19,100 +19,37 @@
 # Copy this plugin's folder (named "Multiple Protagonists") into your project's
 # Plugins folder. In addition, make sure to define all of your playable
 # characters in the Global Metadata (found under "PBS/metadata.txt" in your game
-# folder), starting with PlayerA (and up to PlayerH).
+# folder), starting with section [1].
 # 
 # Before using this script, make sure to start a new save file when testing.
 # Since it adds new stored data, the script will probably throw errors when used
 # with saves where the script wasn't present before.
 # 
-# To install the "Switch" character command in the pause menu, follow the
-# instructions below.
-# 
-# You will need to paste the following code into the section "UI_PauseMenu"
-# at the appropriate lines (all of which are under "def pbStartPokemonMenu").
-# If you've already made your own edits to the script before, then ignore the
-# suggested line numbers below and just find each line with CTRL + Shift + F.
+# You'll need to allow the use of \PN1, \PN2, etc. for map names and Show Text
+# boxes, exactly like how \PN works. To do this, follow the instructions below.
 
 =begin
-  1. You'll need to start by defining a variable for the command. Place the
-     following line AFTER the line "cmdEndGame  = -1" (around line 115):
+  1. In section Messages, around line 265:
   
-     cmdEndGame  = -1 # Find this
-     cmdSwitch   = -1 # Add this below
+     gsubPN(name) # Add this above
+     name.gsub!(/\\PN/, $player.name) if $player # Find this
   
-  2. Now you need to add it to the list of pause menu commands. Place these 4
-     lines AFTER the line "commands[cmdTrainer = commands.length]  = $Trainer.name"
-     (around line 123):
-  
-     commands[cmdTrainer = commands.length]  = $Trainer.name # Find this
-     # Add following lines below
-     if $PokemonGlobal.commandCharacterSwitchOn && !pbInSafari? &&
-           !pbInBugContest? && !pbBattleChallenge.pbInProgress?
-       commands[cmdSwitch = commands.length] = _INTL("Switch")
-     end
-  
-  3. Finally, you need to add the code for what actually happens when the player
-     selects the command. Add the following code BEFORE the line
-     "elsif cmdOption>=0 && command==cmdOption" (around line 256):
-  
-     elsif cmdSwitch>=0 && command==cmdSwitch
-       characters = []
-       characterIDs = []
-       for i in 0...8
-         if $PokemonGlobal.allowedCharacters[i] && i != $Trainer.character_ID
-           characters.push(getTrainerFromCharacter(i).name)
-           characterIDs.push(i)
-         end
-       end
-       if characters.length <= 0
-         pbMessage(_INTL("You're the only character!"))
-         next
-       end
-       characters.push("Cancel")
-       command = pbShowCommands(nil, characters, characters.length)
-       if command >= 0 && command < characters.length - 1
-         @scene.pbHideMenu
-         pbSwitchCharacter(characterIDs[command])
-         break
-       end
-     # Add lines above this line
-     elsif cmdOption>=0 && command==cmdOption # Find this
-  
-  4. That's it! When you enable character switching through the menu, this
-     should now show up and let the player switch between characters.
-=end
-
-# In addition, you'll need to allow the use of \PN0 - \PN7 for map names and
-# Show Text boxes, exactly like how \PN works. To do this, follow the
-# instructions below.
-
-=begin
-  1. In section Game_Map, around line 101:
-  
-     gsubPN(ret) # Add this above
-     ret.gsub!(/\\PN/,$Trainer.name) if $Trainer # Find this
-  
-  2. In section Messages, around line 355:
-  
-     gsubPN(map) # Add this above
-     map.gsub!(/\\PN/,$Trainer.name) if $Trainer # Find this
-  
-  3. In section Messages, around line 546:
+  2. In section Messages, around line 448:
   
      gsubPN(text) if defined?(gsubPN) # Add this above
-     text.gsub!(/\\pn/i,$Trainer.name) if $Trainer # Find this
+     text.gsub!(/\\pn/i,  $player.name) if $player # Find this
   
-  4. In section Battle_StartAndEnd, around line 411:
-  
-     gsubPN(msg) # Add this above
-     pbDisplayPaused(msg.gsub(/\\[Pp][Nn]/,pbPlayer.name)) # Find this
-  
-  5. In section Battle_StartAndEnd, around line 446:
+  3. In section Battle_StartAndEnd, around line 419:
   
      gsubPN(msg) # Add this above
-     pbDisplayPaused(msg.gsub(/\\[Pp][Nn]/,pbPlayer.name)) # Find this
+     pbDisplayPaused(msg.gsub(/\\[Pp][Nn]/, pbPlayer.name)) # Find this
+  
+  4. In section Battle_StartAndEnd, around line 456:
+  
+     gsubPN(msg) # Add this above
+     pbDisplayPaused(msg.gsub(/\\[Pp][Nn]/, pbPlayer.name)) # Find this
      
-  6. For any third-party script you install, if you see a line with any variant
+  5. For any third-party script you install, if you see a line with any variant
      of "\PN" or "\[Pp][Nn]", then you will need to add a line above it like
      "gsubPN(text)", where "text" needs to be replaced with whatever variable
      name is being used. For example, if you are using Mr. Gela's Name Windows
@@ -132,25 +69,25 @@
 #-------------------------------------------------------------------------------
 # To switch to another character at any point in the story, simply call
 # "pbSwitchCharacter(id)", where the id corresponds to the definition in the
-# Global Metadata (PlayerA is 0, PlayerB is 1, etc). If you're switching to a
+# Global Metadata (starting with character 1). If you're switching to a
 # character for the first time, you can pass in the same parameters as you would
 # for "pbTrainerName", though it's not necessary.
 # 
-# At the start of the game, the character id is initially 0 (PlayerA). Use
+# At the start of the game, the character id is initially 1. Use
 # pbTrainerName to set the character up instead of pbSwitchCharacter, unless
-# you want the starting character to NOT be PlayerA.
+# you want the starting character to NOT be character 1.
 # 
-# Ex. Starting out as Player A:
+# Ex. Starting out as character 1:
 # 
 # pbTrainerName # Notice that this is the same as in base Essentials
 # 
-# Ex. If you want to switch to Player C and let the player choose their name:
+# Ex. If you want to switch to character 3 and let the player choose their name:
 # 
-# pbSwitchCharacter(2)
+# pbSwitchCharacter(3)
 # 
-# Ex. If you then want to switch to Player B with the name "Leaf" and outfit 3:
+# Ex. If you then want to switch to character 2 with the name "Leaf" and outfit 3:
 # 
-# pbSwitchCharacter(1, "Leaf", 3)
+# pbSwitchCharacter(2, "Leaf", 3)
 # 
 # All global switches/variables and event self-switches DO NOT get saved in
 # the character's data, so if you have an event that you want each character to
@@ -176,42 +113,41 @@
 # character id.
 # 
 # Ex. You have enabled character switching from the pause menu, but want to
-# exclude Player C from the list of characters to switch to:
+# exclude character 3 from the list of characters to switch to:
 # 
-# pbDisableCharacter(2)
+# pbDisableCharacter(3)
 # 
 # The "pbSetLastMap(id, map_id, x, y, dir)" function lets you set the spawn
 # point of the character id to the specified location the next time that
 # character is switched to from the pause menu (not from an event).
 # 
-# Ex. You're currently playing as Player B, and want to make sure that the next
-# time you switch to Player A from the pause menu, they end up at map ID 3,
-# coordinates (5, 7), and facing up:
+# Ex. You're currently playing as character 2, and want to make sure that the
+# next time you switch to character 1 from the pause menu, they end up at map
+# ID 3, coordinates (5, 7), and facing up:
 # 
-# pbSetLastMap(0, 3, 5, 7, 8)
+# pbSetLastMap(1, 3, 5, 7, 8)
 # 
 #-------------------------------------------------------------------------------
 # BATTLES BETWEEN CHARACTERS
 #-------------------------------------------------------------------------------
 # You can register or battle against other characters (even yourself!) by
 # setting the trainer id as the character id and the trainer name as
-# "PROTAG". The general format is "pbRegisterPartner(character_id, "PROTAG")"
-# and "pbTrainerBattle(character_id, "PROTAG")" (and similar for one or more)
-# characters in pbDoubleTrainerBattle).
+# "PROTAG". The general format is "pbRegisterPartnerFromCharacter(character_id)"
+# and "TrainerBattle.start(pbCreateTrainerFromCharacter(character_id))".
 # 
-# Ex, If you want to fight against Player B, you can use this script:
+# Ex, If you want to fight against character 2, you can use this script:
 # 
-# pbTrainerBattle(1, "PROTAG")
+# TrainerBattle.start(pbCreateTrainerFromCharacter(2))
 # 
-# Ex. If you want to fight alongside Player B against Player C and Camper
+# Ex. If you want to fight alongside character 2 against character 3 and Camper
 # Liam, the following two lines can be used:
 # 
-# pbRegisterPartner(1, "PROTAG")
-# pbDoubleTrainerBattle(2, "PROTAG", 0, nil, :CAMPER, "Liam")
+# pbRegisterPartnerFromCharacter(2)
+# TrainerBattle.start(pbCreateTrainerFromCharacter(3), :CAMPER, "Liam")
 # 
 # Ex. If a character wants to fight against themselves, use this script:
 # 
-# pbTrainerBattle($Trainer.character_ID, "PROTAG")
+# TrainerBattle.start(pbCreateTrainerFromCharacter($player.character_ID))
 # 
 #-------------------------------------------------------------------------------
 # TRADING BETWEEN CHARACTERS
@@ -235,18 +171,19 @@
 # the current player's chosen Pokemon, and "secondPokemonIndex" is the index of
 # the other character's chosen Pokemon.
 # 
-# Ex. Assume Player A (the current character) wants to trade with Player B.
+# Ex. Assume character 1 is the current character and wants to trade with
+# character 2.
 # 
 # First choose a Pokemon from the current character:
 # pbChoosePokemon(1, 2) # "pbGet(1)" is firstPokemonIndex
 # 
-# If pbGet(1) is not -1, choose a Pokemon from Player B:
-# pbChoosePokemonFromCharacter(1, 3, 4) # "pbGet(3)" is secondPokemonIndex
-# # The first "1" means character ID of 1 = Player B
+# If pbGet(1) is not -1, choose a Pokemon from character 2:
+# pbChoosePokemonFromCharacter(2, 3, 4) # "pbGet(3)" is secondPokemonIndex
+# # The first "2" means character ID of 2
 # 
 # If pbGet(3) is not -1, perform the trade:
-# pbTradeWithCharacter(1, pbGet(1), pbGet(3))
-# # The first "1" means character ID of 1 = Player B
+# pbTradeWithCharacter(2, pbGet(1), pbGet(3))
+# # The first "2" means character ID of 2
 # 
 # You can put whatever messages and other commands you want for your trade
 # event. Visit the "Trading Pokemon" section on the Essentials wiki to see an
@@ -254,26 +191,26 @@
 # 
 # You can also have the current character send a Pokemon to another character
 # using this function: "pbSendToCharacter(id, pokemonIndex)". The current
-# player cannot send their last remaining Pokemon away, and the recipient
+# character cannot send their last remaining Pokemon away, and the recipient
 # must have space in either their party or storage to receive the Pokemon.
 # 
-# Ex. Player A wants to send a Pokemon to Player B.
+# Ex. The current character wants to send a Pokemon to character 2.
 # 
 # First choose a Pokemon from the current character:
 # pbChoosePokemon(1, 2)
 # 
-# If pbGet(1) is not -1, send to Player B:
-# pbSendToCharacter(1, pbGet(1))
+# If pbGet(1) is not -1, send to character 2:
+# pbSendToCharacter(2, pbGet(1))
 # 
 #-------------------------------------------------------------------------------
 # MISC.
 #-------------------------------------------------------------------------------
 # You can use this variable to get the ID of the character currently being
-# played as: $Trainer.character_ID
+# played as: $player.character_ID
 # 
-# You can use \PN0 - \PN7 to refer to each of the protagonists' names (\PN0 is
-# PlayerA, \PN1 is Player B, and so on) in map names exactly like the way you
-# use \PN to refer to the name of the current player.
+# You can use \PN1, \PN2, etc. to refer to each of the protagonists' names (\PN1
+# is character 1, \PN2 is character 2, and so on) in map names exactly like the
+# way you use \PN to refer to the name of the current character.
 # 
 # Refer to "Script Compatibility" to add more data that you want to track
 # for each character.
@@ -289,11 +226,11 @@
 # in which case it will then turn into "Blue's House". If you have any maps with
 # \PN in it, this can be fixed by replacing the following:
 # 
-# ret.gsub!(/\\PN/,$Trainer.name) if $Trainer # Find this
+# name.gsub!(/\\PN/, $player.name) if $player # Find this
 # 
 # with:
 # 
-# ret=ret.gsub(/\\PN/,$Trainer.name) if $Trainer # Replace it with this
+# name = name.gsub(/\\PN/, $player.name) if $player # Replace it with this
 # 
 # Solution added by Tustin2121
 # 
@@ -312,11 +249,11 @@
 # 
 # 1. Add a constant for the data to the bottom of module PBCharacterData:
 # 
-#     CurrentDiving       = 44 # Find these two lines
+#     CurrentDiving       = 42 # Find these two lines
 #    end
 #    Example              = XX # Add this (name can be whatever makes sense)
 #    # The next number (XX) should be one more than the previous number.
-#    # If you haven't added data using this tutorial yet, XX would be 45.
+#    # If you haven't added data using this tutorial yet, XX would be 43.
 # 
 # 2. In def pbSwitchCharacter:
 # 
@@ -339,18 +276,20 @@
 #-------------------------------------------------------------------------------
 # I would like to acknowledge Tustin2121 for making a tutorial for Multiple
 # Protagonists on the old wiki, before the wiki was shut down. His tutorial
-# essentially laid the basis for how I would design my script.
+# essentially laid the basis for how I designed my script.
 # 
 # I hope you enjoy it!
 # - NettoHikari
 ################################################################################
 
 def hasFollowerScript?
-  return defined?(FollowerSettings)
+  return defined?(FollowingPkmn)
 end
 
+MAX_CHARACTERS = 8
+
 # List of objects stored for each character
-# 0. Trainer Object
+# 0. Player Object
 # 1. Item Bag
 # 2. Pokemon Storage
 # 3. Mailbox
@@ -358,8 +297,8 @@ end
 # 5. Happiness Steps
 # 6. Pokerus Time
 # 7. Daycare Pokemon
-# 8. Daycare Egg
-# 9. Daycare Egg Steps
+# 8. Last Battle (Battle Tower)
+# 9. Map Trail
 # 10. Current Pokedex
 # 11. Last Viewed Pokemon in each Dex
 # 12. Pokedex Search Mode
@@ -367,7 +306,7 @@ end
 # 14. Partner Trainer
 # 15. Phone Numbers
 # 16. Phone Time
-# 17. Dependent Events
+# 17. Followers
 # 18. Pokeradar Battery
 # 19. Purify Chamber
 # 20. Triad Collection
@@ -387,28 +326,26 @@ end
 # 34. Last Pokecenter X
 # 35. Last Pokecenter Y
 # 36. Last Pokecenter Direction
-# 37. Last Battle (Battle Tower)
-# 38. Map Trail
 # 
 # If Following Pokemon EX script is installed:
-# 39. Following Active
-# 40. Call Refresh
-# 41. Time Taken (related to Happiness)
-# 42. Follower Hold Item (picked up from following)
-# 43. Currently Surfing
-# 44. Currently Diving
+# 37. Following Active
+# 38. Call Refresh
+# 39. Time Taken (related to Happiness)
+# 40. Follower Hold Item (picked up from following)
+# 41. Currently Surfing
+# 42. Currently Diving
 
 module PBCharacterData
-  Trainer               = 0
-  PokemonBag            = 1
+  Player                = 0
+  Bag		                = 1
   PokemonStorage        = 2
   Mailbox               = 3
   PCItemStorage         = 4
   HappinessSteps        = 5
   PokerusTime           = 6
   Daycare               = 7
-  DaycareEgg            = 8
-  DaycareEggSteps       = 9
+  LastBattle            = 8
+  MapTrail              = 9
   PokedexDex            = 10
   PokedexIndex          = 11
   PokedexMode           = 12
@@ -416,7 +353,7 @@ module PBCharacterData
   Partner               = 14
   PhoneNumbers          = 15
   PhoneTime             = 16
-  DependentEvents       = 17
+  Followers    		      = 17
   PokeradarBattery      = 18
   PurifyChamber         = 19
   Triads                = 20
@@ -436,15 +373,13 @@ module PBCharacterData
   PokecenterX           = 34
   PokecenterY           = 35
   PokecenterDirection   = 36
-  LastBattle            = 37
-  MapTrail              = 38
   if hasFollowerScript?
-    FollowerToggled     = 39
-    CallRefresh         = 40
-    TimeTaken           = 41
-    FollowerHoldItem    = 42
-    CurrentSurfing      = 43
-    CurrentDiving       = 44
+    FollowerToggled     = 37
+    CallRefresh         = 38
+    TimeTaken           = 39
+    FollowerHoldItem    = 40
+    CurrentSurfing      = 41
+    CurrentDiving       = 42
   end
 end
 
@@ -456,10 +391,10 @@ class PokemonGlobalMetadata
   alias new_initialize initialize
   def initialize
     new_initialize
-    @mainCharacters = Array.new(8)
+    @mainCharacters = Array.new(MAX_CHARACTERS + 1)
     @commandCharacterSwitchOn = false
-    @allowedCharacters = Array.new(8, false)
-    @allowedCharacters[0] = true
+    @allowedCharacters = Array.new(MAX_CHARACTERS + 1, false)
+    @allowedCharacters[1] = true
   end
 end
 
@@ -487,19 +422,18 @@ end
 
 # Main function to switch between characters
 def pbSwitchCharacter(id, name = nil, outfit = 0)
-  return if id<0 || id>=8 || id == $Trainer.character_ID
+  return if id<1 || id == $player.character_ID
   meta = $PokemonGlobal.mainCharacters[id]
-  oldid = $Trainer.character_ID
+  oldid = $player.character_ID
   $PokemonGlobal.mainCharacters[oldid] = pbCharacterInfoArray
   if meta.nil? # Set up trainer for the first time
-    $Trainer = Player.new("Unnamed", GameData::Metadata.get_player(id)[0])
-    $Trainer.character_ID = id
+    $player = Player.new("Unnamed", GameData::PlayerMetadata.get(id).trainer_type)
+    $player.character_ID = id
     pbTrainerName(name, outfit)
-    $Trainer.id = pbGetForeignCharacterID
-    $PokemonTemp.begunNewGame = false
+    $player.id = pbGetForeignCharacterID
     # Create and store new character's meta
     newmeta = pbDefaultCharacterInfoArray
-    newmeta[PBCharacterData::Trainer] = $Trainer
+    newmeta[PBCharacterData::Player] = $player
     $PokemonGlobal.mainCharacters[id] = newmeta
     meta = $PokemonGlobal.mainCharacters[id]
     pbEnableCharacter(id)
@@ -526,8 +460,8 @@ def pbSwitchCharacter(id, name = nil, outfit = 0)
   end
   # Set to blank array so that dependent events of other character aren't
   # affected
-  $PokemonGlobal.dependentEvents       = []
-  $PokemonTemp.dependentEvents.removeAllEvents()
+  $PokemonGlobal.followers       = []
+  $game_temp.followers.remove_all_followers
   # Assumes that if called through event, then meta[PBCharacterData::MapID]
   # was set to -1 earlier
   # Performs map transfer on player
@@ -539,16 +473,16 @@ def pbSwitchCharacter(id, name = nil, outfit = 0)
     $scene.transfer_player
   end
   # Set all game data to new character's data
-  $Trainer                             = meta[PBCharacterData::Trainer]
-  $PokemonBag                          = meta[PBCharacterData::PokemonBag]
+  $player                              = meta[PBCharacterData::Player]
+  $bag                        	  	   = meta[PBCharacterData::Bag]
   $PokemonStorage                      = meta[PBCharacterData::PokemonStorage]
   $PokemonGlobal.mailbox               = meta[PBCharacterData::Mailbox]
   $PokemonGlobal.pcItemStorage         = meta[PBCharacterData::PCItemStorage]
   $PokemonGlobal.happinessSteps        = meta[PBCharacterData::HappinessSteps]
   $PokemonGlobal.pokerusTime           = meta[PBCharacterData::PokerusTime]
-  $PokemonGlobal.daycare               = meta[PBCharacterData::Daycare]
-  $PokemonGlobal.daycareEgg            = meta[PBCharacterData::DaycareEgg]
-  $PokemonGlobal.daycareEggSteps       = meta[PBCharacterData::DaycareEggSteps]
+  $PokemonGlobal.day_care              = meta[PBCharacterData::Daycare]
+  $PokemonGlobal.lastbattle            = meta[PBCharacterData::LastBattle]
+  $PokemonGlobal.mapTrail              = meta[PBCharacterData::MapTrail]
   $PokemonGlobal.pokedexDex            = meta[PBCharacterData::PokedexDex]
   $PokemonGlobal.pokedexIndex          = meta[PBCharacterData::PokedexIndex]
   $PokemonGlobal.pokedexMode           = meta[PBCharacterData::PokedexMode]
@@ -556,14 +490,14 @@ def pbSwitchCharacter(id, name = nil, outfit = 0)
   $PokemonGlobal.partner               = meta[PBCharacterData::Partner]
   $PokemonGlobal.phoneNumbers          = meta[PBCharacterData::PhoneNumbers]
   $PokemonGlobal.phoneTime             = meta[PBCharacterData::PhoneTime]
-  $PokemonGlobal.dependentEvents       = meta[PBCharacterData::DependentEvents]
+  $PokemonGlobal.followers 		         = meta[PBCharacterData::Followers]
   # Resetting the dependent events causes new unwanted maps to be added to
   # the map factory, so delete them before the scene can be updated
   oldmaps = []
-  $MapFactory.maps.each {|map| oldmaps.push(map.map_id)}
-  $PokemonTemp.dependentEvents = DependentEvents.new
-  $MapFactory.maps.delete_if {|map| !oldmaps.include?(map.map_id)}
-  $PokemonTemp.dependentEvents.updateDependentEvents
+  $map_factory.maps.each {|map| oldmaps.push(map.map_id)}
+  $game_temp.followers = Game_FollowerFactory.new
+  $map_factory.maps.delete_if {|map| !oldmaps.include?(map.map_id)}
+  $game_temp.followers.update
   $PokemonGlobal.pokeradarBattery      = meta[PBCharacterData::PokeradarBattery]
   $PokemonGlobal.purifyChamber         = meta[PBCharacterData::PurifyChamber]
   $PokemonGlobal.triads                = meta[PBCharacterData::Triads]
@@ -579,8 +513,6 @@ def pbSwitchCharacter(id, name = nil, outfit = 0)
   $PokemonGlobal.pokecenterX           = meta[PBCharacterData::PokecenterX]
   $PokemonGlobal.pokecenterY           = meta[PBCharacterData::PokecenterY]
   $PokemonGlobal.pokecenterDirection   = meta[PBCharacterData::PokecenterDirection]
-  $PokemonGlobal.lastbattle            = meta[PBCharacterData::LastBattle]
-  $PokemonGlobal.mapTrail              = meta[PBCharacterData::MapTrail]
   if hasFollowerScript?
     $PokemonGlobal.follower_toggled    = meta[PBCharacterData::FollowerToggled]
     $PokemonGlobal.call_refresh        = meta[PBCharacterData::CallRefresh]
@@ -588,9 +520,9 @@ def pbSwitchCharacter(id, name = nil, outfit = 0)
     $PokemonGlobal.follower_hold_item  = meta[PBCharacterData::FollowerHoldItem]
     $PokemonGlobal.current_surfing     = meta[PBCharacterData::CurrentSurfing]
     $PokemonGlobal.current_diving      = meta[PBCharacterData::CurrentDiving]
-    $PokemonTemp.dependentEvents.refresh_sprite
+    FollowingPkmn.refresh
   end
-  $game_player.charsetData = nil
+  $game_player.refresh_charset
   pbUpdateVehicle
   # Assumes that if called through event, then meta[PBCharacterData::MapID]
   # was set to -1 earlier
@@ -609,8 +541,8 @@ end
 alias protag_pbTrainerName pbTrainerName
 def pbTrainerName(name=nil,outfit=0)
   protag_pbTrainerName(name, outfit)
-  if $Trainer.character_ID == 0
-    $PokemonGlobal.mainCharacters[0] = pbCharacterInfoArray
+  if $player.character_ID == 1
+    $PokemonGlobal.mainCharacters[1] = pbCharacterInfoArray
   end
 end
 
@@ -638,16 +570,16 @@ end
 
 def pbCharacterInfoArray
   info = []
-  info[PBCharacterData::Trainer]               = $Trainer
-  info[PBCharacterData::PokemonBag]            = $PokemonBag
+  info[PBCharacterData::Player]                = $player
+  info[PBCharacterData::Bag]     		           = $bag
   info[PBCharacterData::PokemonStorage]        = $PokemonStorage
   info[PBCharacterData::Mailbox]               = $PokemonGlobal.mailbox
   info[PBCharacterData::PCItemStorage]         = $PokemonGlobal.pcItemStorage
   info[PBCharacterData::HappinessSteps]        = $PokemonGlobal.happinessSteps
   info[PBCharacterData::PokerusTime]           = $PokemonGlobal.pokerusTime
-  info[PBCharacterData::Daycare]               = $PokemonGlobal.daycare
-  info[PBCharacterData::DaycareEgg]            = $PokemonGlobal.daycareEgg
-  info[PBCharacterData::DaycareEggSteps]       = $PokemonGlobal.daycareEggSteps
+  info[PBCharacterData::Daycare]               = $PokemonGlobal.day_care
+  info[PBCharacterData::LastBattle]            = $PokemonGlobal.lastbattle
+  info[PBCharacterData::MapTrail]              = $PokemonGlobal.mapTrail
   info[PBCharacterData::PokedexDex]            = $PokemonGlobal.pokedexDex
   info[PBCharacterData::PokedexIndex]          = $PokemonGlobal.pokedexIndex
   info[PBCharacterData::PokedexMode]           = $PokemonGlobal.pokedexMode
@@ -655,7 +587,7 @@ def pbCharacterInfoArray
   info[PBCharacterData::Partner]               = $PokemonGlobal.partner
   info[PBCharacterData::PhoneNumbers]          = $PokemonGlobal.phoneNumbers
   info[PBCharacterData::PhoneTime]             = $PokemonGlobal.phoneTime
-  info[PBCharacterData::DependentEvents]       = $PokemonGlobal.dependentEvents
+  info[PBCharacterData::Followers]   	         = $PokemonGlobal.followers
   info[PBCharacterData::PokeradarBattery]      = $PokemonGlobal.pokeradarBattery
   info[PBCharacterData::PurifyChamber]         = $PokemonGlobal.purifyChamber
   info[PBCharacterData::Triads]                = $PokemonGlobal.triads
@@ -675,8 +607,6 @@ def pbCharacterInfoArray
   info[PBCharacterData::PokecenterX]           = $PokemonGlobal.pokecenterX
   info[PBCharacterData::PokecenterY]           = $PokemonGlobal.pokecenterY
   info[PBCharacterData::PokecenterDirection]   = $PokemonGlobal.pokecenterDirection
-  info[PBCharacterData::LastBattle]            = $PokemonGlobal.lastbattle
-  info[PBCharacterData::MapTrail]              = $PokemonGlobal.mapTrail
   if hasFollowerScript?
     info[PBCharacterData::FollowerToggled]     = $PokemonGlobal.follower_toggled
     info[PBCharacterData::CallRefresh]         = $PokemonGlobal.call_refresh
@@ -690,16 +620,16 @@ end
 
 def pbDefaultCharacterInfoArray
   info = []
-  info[PBCharacterData::Trainer]               = nil
-  info[PBCharacterData::PokemonBag]            = PokemonBag.new
+  info[PBCharacterData::Player]                = $player
+  info[PBCharacterData::Bag]          		     = $bag
   info[PBCharacterData::PokemonStorage]        = PokemonStorage.new
   info[PBCharacterData::Mailbox]               = nil
   info[PBCharacterData::PCItemStorage]         = nil
   info[PBCharacterData::HappinessSteps]        = 0
   info[PBCharacterData::PokerusTime]           = nil
-  info[PBCharacterData::Daycare]               = [[nil,0],[nil,0]]
-  info[PBCharacterData::DaycareEgg]            = false
-  info[PBCharacterData::DaycareEggSteps]       = 0
+  info[PBCharacterData::Daycare]               = DayCare.new
+  info[PBCharacterData::LastBattle]            = nil
+  info[PBCharacterData::MapTrail]              = []
   numRegions = pbLoadRegionalDexes.length
   info[PBCharacterData::PokedexDex]            = (numRegions==0) ? -1 : 0
   info[PBCharacterData::PokedexIndex]          = []
@@ -711,7 +641,7 @@ def pbDefaultCharacterInfoArray
   info[PBCharacterData::Partner]               = nil
   info[PBCharacterData::PhoneNumbers]          = []
   info[PBCharacterData::PhoneTime]             = 0
-  info[PBCharacterData::DependentEvents]       = nil
+  info[PBCharacterData::Followers]  	         = []
   info[PBCharacterData::PokeradarBattery]      = 0
   info[PBCharacterData::PurifyChamber]         = nil
   info[PBCharacterData::Triads]                = nil
@@ -731,8 +661,6 @@ def pbDefaultCharacterInfoArray
   info[PBCharacterData::PokecenterX]           = -1
   info[PBCharacterData::PokecenterY]           = -1
   info[PBCharacterData::PokecenterDirection]   = -1
-  info[PBCharacterData::LastBattle]            = nil
-  info[PBCharacterData::MapTrail]              = []
   if hasFollowerScript?
     info[PBCharacterData::FollowerToggled]     = false
     info[PBCharacterData::CallRefresh]         = [false, false]
@@ -749,14 +677,14 @@ end
 # trainer cards.
 def pbGetForeignCharacterID
   characterIDs = []
-  for i in 0...$PokemonGlobal.mainCharacters.length
-    if $PokemonGlobal.mainCharacters[i] != nil
-      characterIDs.push(getTrainerFromCharacter(i).id)
+  for i in 1..MAX_CHARACTERS
+    if !$PokemonGlobal.mainCharacters[i].nil?
+      characterIDs.push(getPlayerFromCharacter(i).id)
     end
   end
-  id = $Trainer.make_foreign_ID
+  id = $player.make_foreign_ID
   while characterIDs.include?(id)
-    id = $Trainer.make_foreign_ID
+    id = $player.make_foreign_ID
   end
   return id
 end
@@ -769,89 +697,79 @@ def gsubPN(name)
     global = save_data[:global_metadata]
   end
   return if global.nil?
-  for i in 0..7
+  for i in 1..MAX_CHARACTERS
     if global.mainCharacters[i]
-      name.gsub!(/\\[Pp][Nn]#{i}/, global.mainCharacters[i][PBCharacterData::Trainer].name)
+      name.gsub!(/\\[Pp][Nn]#{i}/, global.mainCharacters[i][PBCharacterData::Player].name)
     end
   end
 end
 
-# Clones and returns character trainer and party if given character id and
-# "PROTAG" as trainer name, otherwise loads trainer data normally
-alias reg_pbLoadTrainer pbLoadTrainer
-def pbLoadTrainer(tr_type, tr_name, tr_version = 0)
-  if tr_name == "PROTAG" && characterIDValid?(tr_type)
-    original = (tr_type == $Trainer.character_ID) ? $Trainer : getTrainerFromCharacter(tr_type)
-    cloned = Marshal.load(Marshal.dump(original))
-    cloned_trainer = NPCTrainer.new(cloned.name, cloned.trainer_type)
-    cloned_trainer.id = cloned.id
-    cloned_trainer.party = cloned.party
-    return cloned_trainer
-  else
-    return reg_pbLoadTrainer(tr_type, tr_name, tr_version)
-  end
+# Creates NPCTrainer object from character
+def pbCreateTrainerFromCharacter(character_ID)
+  return if !characterIDValid?(character_ID)
+  original = (character_ID == $player.character_ID) ? $player : getPlayerFromCharacter(character_ID)
+  cloned = Marshal.load(Marshal.dump(original))
+  cloned_trainer = NPCTrainer.new(cloned.name, cloned.trainer_type)
+  cloned_trainer.id = cloned.id
+  cloned_trainer.party = cloned.party
+  return cloned_trainer
 end
 
-# Registeres a main character as partner if given character id and
-# "PROTAG" as trainer name, otherwise registers partner normally
-alias multiple_protag_pbRegisterPartner pbRegisterPartner
-def pbRegisterPartner(tr_type, tr_name, tr_id = 0)
-  if tr_name == "PROTAG" && characterIDValid?(tr_type)
-    trainer = pbLoadTrainer(tr_type, tr_name, tr_id)
-    Events.onTrainerPartyLoad.trigger(nil, trainer)
-    for i in trainer.party
-      i.owner = Pokemon::Owner.new_from_trainer(trainer)
-      i.calc_stats
-    end
-    $PokemonGlobal.partner = [tr_type, tr_name, trainer.id, trainer.party]
-  else
-    multiple_protag_pbRegisterPartner(tr_type, tr_name, tr_id)
+# Registers a player character as partner
+def pbRegisterPartnerFromCharacter(character_ID)
+  return if !characterIDValid?(character_ID)
+  trainer = pbCreateTrainerFromCharacter(character_ID)
+  EventHandlers.trigger(:on_trainer_load, trainer)
+  for i in trainer.party
+    i.owner = Pokemon::Owner.new_from_trainer(trainer)
+    i.calc_stats
   end
+  $PokemonGlobal.partner = [trainer.trainer_type, trainer.name, trainer.id, trainer.party]
 end
 
-# Gets $Trainer object at specific character ID
-def getTrainerFromCharacter(id)
-  return nil if id < 0 || id >= 8
-  if id == $Trainer.character_ID
-    return $Trainer
+# Gets $player object at specific character ID
+def getPlayerFromCharacter(id)
+  return nil if id < 1 || id > MAX_CHARACTERS
+  if id == $player.character_ID
+    return $player
   else
     meta = $PokemonGlobal.mainCharacters[id]
     return nil if !meta
-    return meta[PBCharacterData::Trainer]
+    return meta[PBCharacterData::Player]
   end
 end
 
 # Returns true if id is within range 0..7 and meta exists
 def characterIDValid?(id)
-  return id >= 0 && id < 8 && $PokemonGlobal.mainCharacters[id]
+  return id >= 1 && id <= MAX_CHARACTERS && $PokemonGlobal.mainCharacters[id]
 end
 
 # Same as pbChoosePokemon but for another character (EXCLUDING the current character)
 def pbChoosePokemonFromCharacter(id,variableNumber,nameVarNumber,ableProc=nil,allowIneligible=false)
-  return if !characterIDValid?(id) || id == $Trainer.character_ID
-  ot = $Trainer
-  $Trainer = getTrainerFromCharacter(id) # Partial switch to new character
+  return if !characterIDValid?(id) || id == $player.character_ID
+  ot = $player
+  $player = getPlayerFromCharacter(id) # Partial switch to new character
   pbChoosePokemon(variableNumber,nameVarNumber,ableProc,allowIneligible)
-  $Trainer = ot # Restore original character
-  $PokemonTemp.dependentEvents.refresh_sprite if hasFollowerScript?
+  $player = ot # Restore original character
+  FollowingPkmn.refresh if hasFollowerScript?
 end
 
 # Same as pbChooseTradablePokemon but for another character (EXCLUDING the current character)
 def pbChooseTradablePokemonFromCharacter(id,variableNumber,nameVarNumber,ableProc=nil,allowIneligible=false)
-  return if !characterIDValid?(id) || id == $Trainer.character_ID
-  ot = $Trainer
-  $Trainer = getTrainerFromCharacter(id) # Partial switch to new character
+  return if !characterIDValid?(id) || id == $player.character_ID
+  ot = $player
+  $player = getPlayerFromCharacter(id) # Partial switch to new character
   pbChooseTradablePokemon(variableNumber,nameVarNumber,ableProc,allowIneligible)
-  $Trainer = ot # Restore original character
-  $PokemonTemp.dependentEvents.refresh_sprite if hasFollowerScript?
+  $player = ot # Restore original character
+  FollowingPkmn.refresh if hasFollowerScript?
 end
 
 # Trade with another character (just like NPC trade)
 def pbTradeWithCharacter(id, firstPokemonIndex, secondPokemonIndex)
-  return if !characterIDValid?(id) || id == $Trainer.character_ID
-  firsttrainer = $Trainer
+  return if !characterIDValid?(id) || id == $player.character_ID
+  firsttrainer = $player
   firstpoke = firsttrainer.party[firstPokemonIndex]
-  secondtrainer = getTrainerFromCharacter(id)
+  secondtrainer = getPlayerFromCharacter(id)
   secondpoke = secondtrainer.party[secondPokemonIndex]
   # secondtrainer will have firstpoke
   firstpoke.obtain_method = 2 # traded
@@ -878,24 +796,24 @@ def pbTradeWithCharacter(id, firstPokemonIndex, secondPokemonIndex)
   # Swap Pokemon
   firsttrainer.party[firstPokemonIndex] = secondpoke
   secondtrainer.party[secondPokemonIndex] = firstpoke
-  $PokemonTemp.dependentEvents.refresh_sprite if hasFollowerScript?
+  FollowingPkmn.refresh if hasFollowerScript?
 end
 
 # Send Pokemon to another character
 def pbSendToCharacter(id, pokemonIndex)
-  return false if !characterIDValid?(id) || id == $Trainer.character_ID
-  if $Trainer.party.length == 1
+  return false if !characterIDValid?(id) || id == $player.character_ID
+  if $player.party.length == 1
     pbMessage(_INTL("You can't send your last Pokemon away!"))
     return false
   end
   secondstorage = $PokemonGlobal.mainCharacters[id][PBCharacterData::PokemonStorage]
-  firsttrainer = $Trainer
-  secondtrainer = getTrainerFromCharacter(id)
+  firsttrainer = $player
+  secondtrainer = getPlayerFromCharacter(id)
   if secondtrainer.party_full? && secondstorage.full?
     pbMessage(_INTL("#{secondtrainer.name} has no space available!"))
     return false
   end
-  pokemon = $Trainer.party[pokemonIndex]
+  pokemon = $player.party[pokemonIndex]
   pokemon.obtain_method = 2 # traded
   secondtrainer.pokedex.register(pokemon)
   secondtrainer.pokedex.set_owned(pokemon.species)
@@ -904,7 +822,35 @@ def pbSendToCharacter(id, pokemonIndex)
   else
     secondstorage.pbStoreCaught(pokemon)
   end
-  $Trainer.party.delete_at(pokemonIndex)
-  $PokemonTemp.dependentEvents.refresh_sprite if hasFollowerScript?
+  $player.party.delete_at(pokemonIndex)
+  FollowingPkmn.refresh if hasFollowerScript?
   return true
 end
+
+# Add pause menu switching
+MenuHandlers.add(:pause_menu, :switch, {
+  "name"      => _INTL("Switch"),
+  "order"     => 55,
+  "condition" => proc { next $PokemonGlobal.commandCharacterSwitchOn && !pbInSafari? && !pbInBugContest? && !pbBattleChallenge.pbInProgress? },
+  "effect"    => proc { |menu|
+    characters = []
+    characterIDs = []
+    for i in 1..MAX_CHARACTERS
+      if $PokemonGlobal.allowedCharacters[i] && i != $player.character_ID
+        characters.push(getPlayerFromCharacter(i).name)
+        characterIDs.push(i)
+      end
+    end
+    if characters.length <= 0
+	    pbMessage(_INTL("You're the only character!"))
+	    next false
+    end
+    characters.push("Cancel")
+    command = pbShowCommands(nil, characters, characters.length)
+    if command >= 0 && command < characters.length - 1
+      menu.pbHideMenu
+      pbSwitchCharacter(characterIDs[command])
+      next true
+    end
+  }
+})

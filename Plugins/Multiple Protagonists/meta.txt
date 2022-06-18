@@ -1,6 +1,7 @@
 Name		= Multiple Protagonists
-Version		= 4.0.2
+Version		= 4.1.0
+Essentials	= 20
 Link		= https://reliccastle.com/resources/280/
 Credits		= NettoHikari
-Requires	= v19.1 Hotfixes
-Optional	= Following Pokemon EX,2.0.7
+Requires	= v20 Hotfixes
+Optional	= Following Pokemon EX,2.2.1
