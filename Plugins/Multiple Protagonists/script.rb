@@ -1,8 +1,8 @@
 ################################################################################
-# Multiple Protagonists v4.1.0
+# Multiple Protagonists v4.1.1
 # by NettoHikari
 # 
-# June 17, 2022
+# July 23, 2022
 # 
 # This script allows the player to have up to multiple main characters, each
 # with their own Pokemon parties, PC and Item storages, Trainer data, etc. It is
@@ -620,8 +620,8 @@ end
 
 def pbDefaultCharacterInfoArray
   info = []
-  info[PBCharacterData::Player]                = $player
-  info[PBCharacterData::Bag]          		     = $bag
+  info[PBCharacterData::Player]                = $player       # $player is already re-assigned before this method is called
+  info[PBCharacterData::Bag]          		     = PokemonBag.new
   info[PBCharacterData::PokemonStorage]        = PokemonStorage.new
   info[PBCharacterData::Mailbox]               = nil
   info[PBCharacterData::PCItemStorage]         = nil
