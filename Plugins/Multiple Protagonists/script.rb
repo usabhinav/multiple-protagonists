@@ -1,8 +1,8 @@
 ################################################################################
-# Multiple Protagonists v4.1.1
+# Multiple Protagonists v4.2.0
 # by NettoHikari
 # 
-# July 23, 2022
+# October 7, 2023
 # 
 # This script allows the player to have up to multiple main characters, each
 # with their own Pokemon parties, PC and Item storages, Trainer data, etc. It is
@@ -48,8 +48,13 @@
   
      gsubPN(msg) # Add this above
      pbDisplayPaused(msg.gsub(/\\[Pp][Nn]/, pbPlayer.name)) # Find this
+
+  5. In section MapMetadata, around line 124:
+
+     gsubPN(ret) if defined?(gsubPN) # Add this above
+     ret.gsub!(/\\PN/, $player.name) if $player # Find this
      
-  5. For any third-party script you install, if you see a line with any variant
+  6. For any third-party script you install, if you see a line with any variant
      of "\PN" or "\[Pp][Nn]", then you will need to add a line above it like
      "gsubPN(text)", where "text" needs to be replaced with whatever variable
      name is being used. For example, if you are using Mr. Gela's Name Windows
@@ -304,12 +309,11 @@ MAX_CHARACTERS = 8
 # 12. Pokedex Search Mode
 # 13. Visited Maps
 # 14. Partner Trainer
-# 15. Phone Numbers
-# 16. Phone Time
+# 16. Phone
 # 17. Followers
 # 18. Pokeradar Battery
 # 19. Purify Chamber
-# 20. Triad Collection
+# 20. Triads
 # 21. Last Map
 # 22. Last X
 # 23. Last Y
@@ -351,8 +355,7 @@ module PBCharacterData
   PokedexMode           = 12
   VisitedMaps           = 13
   Partner               = 14
-  PhoneNumbers          = 15
-  PhoneTime             = 16
+  Phone                 = 16
   Followers    		      = 17
   PokeradarBattery      = 18
   PurifyChamber         = 19
@@ -422,7 +425,7 @@ end
 
 # Main function to switch between characters
 def pbSwitchCharacter(id, name = nil, outfit = 0)
-  return if id<1 || id == $player.character_ID
+  return if id < 1 || id == $player.character_ID
   meta = $PokemonGlobal.mainCharacters[id]
   oldid = $player.character_ID
   $PokemonGlobal.mainCharacters[oldid] = pbCharacterInfoArray
@@ -456,7 +459,7 @@ def pbSwitchCharacter(id, name = nil, outfit = 0)
   # Fades out to prepare for player map transfer
   if meta[PBCharacterData::MapID] >= 0 && $PokemonGlobal.commandCharacterSwitchOn
     $game_screen.start_tone_change(Tone.new(-255, -255, -255, 0), 12)
-    pbWait(16)
+    pbWait(1)
   end
   # Set to blank array so that dependent events of other character aren't
   # affected
@@ -488,8 +491,7 @@ def pbSwitchCharacter(id, name = nil, outfit = 0)
   $PokemonGlobal.pokedexMode           = meta[PBCharacterData::PokedexMode]
   $PokemonGlobal.visitedMaps           = meta[PBCharacterData::VisitedMaps]
   $PokemonGlobal.partner               = meta[PBCharacterData::Partner]
-  $PokemonGlobal.phoneNumbers          = meta[PBCharacterData::PhoneNumbers]
-  $PokemonGlobal.phoneTime             = meta[PBCharacterData::PhoneTime]
+  $PokemonGlobal.phone                 = meta[PBCharacterData::Phone]
   $PokemonGlobal.followers 		         = meta[PBCharacterData::Followers]
   # Resetting the dependent events causes new unwanted maps to be added to
   # the map factory, so delete them before the scene can be updated
@@ -529,7 +531,7 @@ def pbSwitchCharacter(id, name = nil, outfit = 0)
   # Fades in to new map after transferring player
   if meta[PBCharacterData::MapID] >= 0 && $PokemonGlobal.commandCharacterSwitchOn
     $game_screen.start_tone_change(Tone.new(0, 0, 0, 0), 12)
-    pbWait(16)
+    pbWait(1)
   end
 end
 
@@ -585,8 +587,7 @@ def pbCharacterInfoArray
   info[PBCharacterData::PokedexMode]           = $PokemonGlobal.pokedexMode
   info[PBCharacterData::VisitedMaps]           = $PokemonGlobal.visitedMaps
   info[PBCharacterData::Partner]               = $PokemonGlobal.partner
-  info[PBCharacterData::PhoneNumbers]          = $PokemonGlobal.phoneNumbers
-  info[PBCharacterData::PhoneTime]             = $PokemonGlobal.phoneTime
+  info[PBCharacterData::Phone]                 = $PokemonGlobal.phone
   info[PBCharacterData::Followers]   	         = $PokemonGlobal.followers
   info[PBCharacterData::PokeradarBattery]      = $PokemonGlobal.pokeradarBattery
   info[PBCharacterData::PurifyChamber]         = $PokemonGlobal.purifyChamber
@@ -631,16 +632,15 @@ def pbDefaultCharacterInfoArray
   info[PBCharacterData::LastBattle]            = nil
   info[PBCharacterData::MapTrail]              = []
   numRegions = pbLoadRegionalDexes.length
-  info[PBCharacterData::PokedexDex]            = (numRegions==0) ? -1 : 0
+  info[PBCharacterData::PokedexDex]            = (numRegions == 0) ? -1 : 0
   info[PBCharacterData::PokedexIndex]          = []
-  for i in 0...numRegions+1     # National Dex isn't a region, but is included
+  (numRegions + 1).times do |i|     # National Dex isn't a region, but is included
     info[PBCharacterData::PokedexIndex][i]    = 0
   end
   info[PBCharacterData::PokedexMode]           = 0
   info[PBCharacterData::VisitedMaps]           = []
   info[PBCharacterData::Partner]               = nil
-  info[PBCharacterData::PhoneNumbers]          = []
-  info[PBCharacterData::PhoneTime]             = 0
+  info[PBCharacterData::Phone]                 = Phone.new
   info[PBCharacterData::Followers]  	         = []
   info[PBCharacterData::PokeradarBattery]      = 0
   info[PBCharacterData::PurifyChamber]         = nil
@@ -689,7 +689,7 @@ def pbGetForeignCharacterID
   return id
 end
 
-# Substitutes \PN0-\PN7 with the appropriate trainer name
+# Substitutes \PN1-\PN8 with the appropriate trainer name
 def gsubPN(name)
   global = $PokemonGlobal
   if global.nil? && SaveData.exists?
