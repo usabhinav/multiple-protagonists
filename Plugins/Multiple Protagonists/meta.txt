@@ -1,5 +1,5 @@
 Name		= Multiple Protagonists
-Version		= 4.2.0
+Version		= 5.0.0
 Essentials	= 21.1
 Link		= https://reliccastle.com/resources/280/
 Credits		= NettoHikari
